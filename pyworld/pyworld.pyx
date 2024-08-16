@@ -48,6 +48,8 @@ cdef extern from "world/harvest.h":
         double f0_floor
         double f0_ceil
         double frame_period
+        double allowed_range1
+        double allowed_range3
 
     void InitializeHarvestOption(HarvestOption *option)
     int GetSamplesForHarvest(int fs, int x_length, double frame_period)
@@ -151,9 +153,13 @@ def dio(np.ndarray[double, ndim=1, mode="c"] x not None, int fs,
     return f0, temporal_positions
 
 
-def harvest(np.ndarray[double, ndim=1, mode="c"] x not None, int fs,
-            f0_floor=default_f0_floor, f0_ceil=default_f0_ceil,
-            frame_period=default_frame_period):
+def harvest(np.ndarray[double, ndim=1, mode="c"] x not None,
+            int fs,
+            float f0_floor=default_f0_floor,
+            float f0_ceil=default_f0_ceil,
+            float frame_period=default_frame_period,
+            float allowed_range1=0.008,
+            float allowed_range3=0.18):
     """Harvest F0 extraction algorithm.
 
     Parameters
@@ -171,6 +177,10 @@ def harvest(np.ndarray[double, ndim=1, mode="c"] x not None, int fs,
     frame_period : float
         Period between consecutive frames in milliseconds.
         Default: 5.0
+    allowed_range1 : float
+        Default: 0.008
+    allowed_range3 : float
+        Default: 0.18
 
     Returns
     -------
@@ -185,6 +195,8 @@ def harvest(np.ndarray[double, ndim=1, mode="c"] x not None, int fs,
     option.f0_floor = f0_floor
     option.f0_ceil = f0_ceil
     option.frame_period = frame_period
+    option.allowed_range1 = allowed_range1
+    option.allowed_range3 = allowed_range3
     f0_length = GetSamplesForHarvest(fs, x_length, option.frame_period)
     cdef np.ndarray[double, ndim=1, mode="c"] f0 = \
         np.zeros(f0_length, dtype=np.dtype('float64'))

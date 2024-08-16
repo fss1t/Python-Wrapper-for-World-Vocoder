@@ -1,3 +1,4 @@
 [submodule "lib/World"]
 	path = lib/World
-	url = https://github.com/fss1t/World
+	url = https://github.com/fss1t/World.git
+	branch = master
