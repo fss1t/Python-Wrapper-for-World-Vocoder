@@ -66,6 +66,15 @@ cdef extern from "world/d4c.h":
         const double *f0, int f0_length, int fft_size, const D4COption *option,
         double **aperiodicity) except +
 
+cdef extern from "world/d4c1.h":
+    ctypedef struct D4C1Option:
+        double threshold
+
+    void InitializeD4C1Option(D4C1Option *option) except +
+    void D4C1(const double *x, int x_length, int fs, const double *temporal_positions,
+        const double *f0, int f0_length, int fft_size, const D4C1Option *option,
+        double **aperiodicity) except +
+
 
 cdef extern from "world/stonemask.h":
     void StoneMask(const double *x, int x_length, int fs,
@@ -402,6 +411,76 @@ def d4c(np.ndarray[double, ndim=1, mode="c"] x not None,
         cpp_aperiodicity[i] = &aperiodicity[i, 0]
 
     D4C(&x[0], x_length, fs, &temporal_positions[0],
+        &f0[0], f0_length, fft_size0, &option,
+        cpp_aperiodicity)
+    return np.array(aperiodicity, dtype=np.float64)
+
+
+def d4c1(np.ndarray[double, ndim=1, mode="c"] x not None,
+        np.ndarray[double, ndim=1, mode="c"] f0 not None,
+        np.ndarray[double, ndim=1, mode="c"] temporal_positions not None,
+        int fs,
+        threshold=0.85, 
+        frequency_interval=3000.0,
+        fft_size=None):
+    """D4C1 aperiodicity estimation algorithm.
+
+    Parameters
+    ----------
+    x : ndarray
+        Input waveform signal.
+    f0 : ndarray
+        Input F0 contour.
+    temporal_positions : ndarray
+        Temporal positions of each frame.
+    fs : int
+        Sample rate of input signal in Hz.
+    q1 : float
+        Spectral recovery parameter.
+        Default: -0.15 (this value was tuned and normally does not need adjustment)
+    threshold : float
+        Threshold for aperiodicity-based voiced/unvoiced decision, in range 0 to 1.
+        If a value of 0 is used, voiced frames will be kept voiced. If a value > 0 is
+        used some voiced frames can be considered unvoiced by setting their aperiodicity
+        to 1 (thus synthesizing them with white noise). Using `threshold=0` will result
+        in the behavior of older versions of D4C. The current default of 0.85 is meant
+        to be used in combination with the Harvest F0 estimator, which was designed to have
+        a high voiced/unvoiced threshold (i.e. most frames will be considered voiced).
+        Default: 0.85
+    fft_size : int, None
+        FFT size to be used. When `None` (default) is used, the FFT size is computed
+        automatically as a function of the given input sample rate and the default F0 floor.
+        When `fft_size` is specified, it should match the FFT size used to compute
+        the spectral envelope (i.e. `fft_size=2*(sp.shape[1] - 1)`) in order to get the
+        desired results when resynthesizing.
+        Default: None
+
+    Returns
+    -------
+    aperiodicity : ndarray
+        Aperiodicity (envelope, linear magnitude relative to spectral envelope).
+    """
+    cdef int x_length = <int>len(x)
+    cdef int f0_length = <int>len(f0)
+    cdef int fft_size0
+    if fft_size is None:
+        fft_size0 = get_cheaptrick_fft_size(fs, default_f0_floor)
+    else:
+        fft_size0 = fft_size
+
+    cdef D4C1Option option
+    InitializeD4C1Option(&option)
+    option.threshold = threshold
+
+    cdef double[:, ::1] aperiodicity = np.zeros((f0_length, fft_size0//2 + 1),
+                                                dtype=np.dtype('float64'))
+    cdef np.intp_t[:] tmp = np.zeros(f0_length, dtype=np.intp)
+    cdef double **cpp_aperiodicity = <double**> (<void*> &tmp[0])
+    cdef np.intp_t i
+    for i in range(f0_length):
+        cpp_aperiodicity[i] = &aperiodicity[i, 0]
+
+    D4C1(&x[0], x_length, fs, &temporal_positions[0],
         &f0[0], f0_length, fft_size0, &option,
         cpp_aperiodicity)
     return np.array(aperiodicity, dtype=np.float64)
