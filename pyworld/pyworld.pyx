@@ -69,11 +69,12 @@ cdef extern from "world/d4c.h":
 cdef extern from "world/d4c1.h":
     ctypedef struct D4C1Option:
         double threshold
+        double frequencyInterval
 
     void InitializeD4C1Option(D4C1Option *option) except +
     void D4C1(const double *x, int x_length, int fs, const double *temporal_positions,
         const double *f0, int f0_length, int fft_size, const D4C1Option *option,
-        double **aperiodicity) except +
+        double *aperiodicity) except +
 
 
 cdef extern from "world/stonemask.h":
@@ -435,9 +436,6 @@ def d4c1(np.ndarray[double, ndim=1, mode="c"] x not None,
         Temporal positions of each frame.
     fs : int
         Sample rate of input signal in Hz.
-    q1 : float
-        Spectral recovery parameter.
-        Default: -0.15 (this value was tuned and normally does not need adjustment)
     threshold : float
         Threshold for aperiodicity-based voiced/unvoiced decision, in range 0 to 1.
         If a value of 0 is used, voiced frames will be kept voiced. If a value > 0 is
@@ -447,6 +445,8 @@ def d4c1(np.ndarray[double, ndim=1, mode="c"] x not None,
         to be used in combination with the Harvest F0 estimator, which was designed to have
         a high voiced/unvoiced threshold (i.e. most frames will be considered voiced).
         Default: 0.85
+    frequency_interval : float
+        Default: 3000.0
     fft_size : int, None
         FFT size to be used. When `None` (default) is used, the FFT size is computed
         automatically as a function of the given input sample rate and the default F0 floor.
@@ -471,19 +471,15 @@ def d4c1(np.ndarray[double, ndim=1, mode="c"] x not None,
     cdef D4C1Option option
     InitializeD4C1Option(&option)
     option.threshold = threshold
+    option.frequencyInterval = frequency_interval
 
-    cdef double[:, ::1] aperiodicity = np.zeros((f0_length, fft_size0//2 + 1),
-                                                dtype=np.dtype('float64'))
-    cdef np.intp_t[:] tmp = np.zeros(f0_length, dtype=np.intp)
-    cdef double **cpp_aperiodicity = <double**> (<void*> &tmp[0])
-    cdef np.intp_t i
-    for i in range(f0_length):
-        cpp_aperiodicity[i] = &aperiodicity[i, 0]
+    cdef np.ndarray[double, ndim=1, mode="c"] aperiodicity = \
+        np.zeros(f0_length, dtype=np.dtype('float64'))
 
     D4C1(&x[0], x_length, fs, &temporal_positions[0],
         &f0[0], f0_length, fft_size0, &option,
-        cpp_aperiodicity)
-    return np.array(aperiodicity, dtype=np.float64)
+        &aperiodicity[0])
+    return aperiodicity
 
 
 def synthesize(np.ndarray[double, ndim=1, mode="c"] f0 not None,
