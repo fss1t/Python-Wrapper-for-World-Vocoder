@@ -346,7 +346,7 @@ def d4c(np.ndarray[double, ndim=1, mode="c"] x not None,
         threshold=0.85, 
         frequency_interval=3000.0,
         fft_size=None):
-    """D4C1 aperiodicity estimation algorithm.
+    """D4C aperiodicity estimation algorithm.
 
     Parameters
     ----------
@@ -393,7 +393,7 @@ def d4c(np.ndarray[double, ndim=1, mode="c"] x not None,
     cdef D4COption option
     InitializeD4COption(&option)
     option.threshold = threshold
-    option.frequencyInterval=frequency_interval
+    option.frequencyInterval = frequency_interval
 
     cdef double[:, ::1] aperiodicity = np.zeros((f0_length, fft_size0//2 + 1),
                                                 dtype=np.dtype('float64'))
