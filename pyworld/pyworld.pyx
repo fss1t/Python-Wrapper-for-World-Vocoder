@@ -60,7 +60,7 @@ cdef extern from "world/harvest.h":
 cdef extern from "world/d4c.h":
     ctypedef struct D4COption:
         double threshold
-        double frequencyInterval
+        double frequency_interval
 
     void InitializeD4COption(D4COption *option) except +
     void D4C(const double *x, int x_length, int fs, const double *temporal_positions,
@@ -398,7 +398,7 @@ def d4c(np.ndarray[double, ndim=1, mode="c"] x not None,
     cdef D4COption option
     InitializeD4COption(&option)
     option.threshold = threshold
-    option.frequencyInterval = frequency_interval
+    option.frequency_interval = frequency_interval
 
     cdef double[:, ::1] aperiodicity = np.zeros((f0_length, fft_size0//2 + 1),
                                                 dtype=np.dtype('float64'))
@@ -464,7 +464,7 @@ def d4cb(np.ndarray[double, ndim=1, mode="c"] x not None,
     cdef D4COption option
     InitializeD4COption(&option)
     option.threshold = threshold
-    option.frequencyInterval = frequency_interval
+    option.frequency_interval = frequency_interval
 
     cdef double[:, ::1] aperiodicity = np.zeros((f0_length, number_of_aperiodicities),
                                                 dtype=np.dtype('float64'))
